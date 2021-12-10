@@ -23,6 +23,7 @@
 #include <TRandom3.h>
 #include <TGraph2DErrors.h>
 #include <TGraph2D.h>
+#include <TFitter.h>
 #include <set>
 
 using namespace std;
@@ -207,40 +208,46 @@ void LTF_ROOTTools::plotLiTeFit(const LTF::LiTeFit& fit, const vector<double>& b
    // ---------------------------------------------- //
    // main plot
    // ---------------------------------------------- //
+
+   // set up color palette
+   gStyle->SetPalette(kLightTemperature);
+
    for ( int iref = 0 ; iref<reference_values.size() ; iref++ ) {
       templates[iref]->SetLineWidth(2);
       if ( iref == 0 ) {
          templates[0]->SetTitle(("Linear Template Fit;"+observablename+";"+yaxistitle).c_str());
-         templates[0]->SetLineColor(kRed+1);
+         //templates[0]->SetLineColor(kRed+1);
          if ( templates[0]->GetMaximum()>0 )templates[0]->SetMinimum(0);
          if ( !fit.GetLogNormal() ) 
             templates[0]->SetMaximum(templates[0]->GetMaximum()*1.7);
          // else 
          //    templates[0]->SetMaximum(templates[0]->GetMaximum()*3.); 
          templates[0]->SetLineWidth(3);
-         templates[0]->DrawClone("hist");
+         templates[0]->DrawClone("hist PLC PMC");
       }
       else if ( iref==reference_values.size()-1) {
-         if ( templates[0]->GetMaximum()>0 ) templates[iref]->SetFillColorAlpha(kBlue,0.15);
-         templates[iref]->SetLineColor(kBlue+2);
+         //if ( templates[0]->GetMaximum()>0 ) templates[iref]->SetFillColorAlpha(kBlue,0.15);
+         //templates[iref]->SetLineColor(kBlue+2);
          templates[iref]->SetLineWidth(3);
-         templates[iref]->Draw("histsame");
+         templates[iref]->Draw("hist same PLC PMC");
       }
       else {
-         templates[iref]->SetLineColor(iref+2);
+         //templates[iref]->SetLineColor(iref+2);
          templates[iref]->SetLineWidth(2);
-         templates[iref]->Draw("histsame");
+         templates[iref]->Draw("hist same PLC PMC");
       }
    }   
-   if ( templates[0]->GetMaximum()>0 )templates[0]->SetFillColorAlpha(kRed,0.15);
-   templates[0]->Draw("histsame");
+   //if ( templates[0]->GetMaximum()>0 )templates[0]->SetFillColorAlpha(kRed,0.15);
+   //templates[0]->Draw("histsame");
 
    data->SetMarkerStyle(20);
    data->SetMarkerSize(1.4);
    data->SetLineColor(kBlack);
+   data->SetMarkerColor(kBlack);
+   data->SetLineWidth(2);
    data->Draw("e0same");
 
-   TheoFit->SetLineColor(923);
+   TheoFit->SetLineColor(kGray+1);
    TheoFit->SetLineWidth(4);
    TheoFit->SetLineStyle(2);
    TheoFit->Draw("histsame");
@@ -264,9 +271,9 @@ void LTF_ROOTTools::plotLiTeFit(const LTF::LiTeFit& fit, const vector<double>& b
    // print linear-functions in every bin
    // ---------------------------------------------- //
    c1.Clear();
-   c1.SetRightMargin(0.02);
+   c1.SetRightMargin(0.05);
    c1.SetTopMargin(0.02);
-   c1.SetLeftMargin(0.16);
+   c1.SetLeftMargin(0.20);
    c1.SetBottomMargin(0.16);
 
    gPad->SetTicky(1);
@@ -274,8 +281,9 @@ void LTF_ROOTTools::plotLiTeFit(const LTF::LiTeFit& fit, const vector<double>& b
    gStyle->SetLabelSize(0.05,"XYZ");
    gStyle->SetTitleSize(0.05,"XYZ");
    gStyle->SetTitleOffset(1.1,"X");
-   gStyle->SetTitleOffset(1.6,"Y");
+   gStyle->SetTitleOffset(2.1,"Y");
    gStyle->SetMarkerSize(2);
+   gStyle->SetEndErrorSize(0);
 
 
    //map < string, vector<double> > input_table = read_input_table2("data/CMS_data.txt",32);
@@ -288,40 +296,53 @@ void LTF_ROOTTools::plotLiTeFit(const LTF::LiTeFit& fit, const vector<double>& b
       gdata->SetPoint(0,fit.ahat(0),fit.Dt(ibin));
       gdata->SetPointError(0,0,data->GetBinError(ibin+1));
       gdata->SetMarkerStyle(20);
+      gdata->SetLineWidth(3);
 
       TGraphErrors* graph = MakeTGraph(fit.M.col(1),ibin,fit.Y,fit.SysY);
-      graph->Fit("pol1","Q");
+      TFitResultPtr r = graph->Fit("pol1","Q");
       TF1* pol1w = (TF1*)graph->GetFunction("pol1")->Clone("pol1w");
-      pol1w->SetLineColor(922);
+      pol1w->SetLineColor(kBlack);
       pol1w->SetLineStyle(3);
       pol1w->SetLineWidth(2);
 
-      TF1* f2= new TF1("f2","[0]+[1]*pow(x,2)", -FLT_MIN,FLT_MAX );
-      graph->Fit(f2,"QW");
-      TF1* f1= new TF1("f1","[0]+[1]*pow(x,[2])", -FLT_MIN,FLT_MAX );
-      
+      TGraphErrors* fit_err_68 = MakeTGraph(fit.M.col(1),ibin,fit.Y,fit.SysY);
+      TFitter* fitter = (TFitter*) TVirtualFitter::GetFitter();
+      fitter->GetConfidenceIntervals(fit_err_68, 0.68);
+      fit_err_68->SetFillColor(kOrange-4);
 
-      graph->Fit("pol1","QW"); // "W": Ignore all point errors when fitting a TGraphErrors 
+      //TF1* f2= new TF1("f2","[0]+[1]*pow(x,2)", -FLT_MIN,FLT_MAX );
+      //graph->Fit(f2,"QW");
+      //TF1* f1= new TF1("f1","[0]+[1]*pow(x,[2])", -FLT_MIN,FLT_MAX );
+      //graph->Fit("pol1","QW"); // "W": Ignore all point errors when fitting a TGraphErrors 
+
       bool UseLTFOutput = true;
       if ( UseLTFOutput ) {
          Eigen::VectorXd ltfpol1param =(fit.Y*fit.Mc().transpose()).row(ibin);
          //cout<<"M+*Y:"<<endl<< ltfpol1param <<endl;
          graph->GetFunction("pol1")->SetParameter(0,ltfpol1param(0));
          graph->GetFunction("pol1")->SetParameter(1,ltfpol1param(1));
-         f1->SetParameter(0,ltfpol1param(0));
-         f1->SetParameter(1,ltfpol1param(1));
-         f1->SetParameter(2,fit.Gamma[0]);
+
+         // Question to Daniel: calculate errors on parameters!
+
+         //f1->SetParameter(0,ltfpol1param(0));
+         //f1->SetParameter(1,ltfpol1param(1));
+         //f1->SetParameter(2,fit.Gamma[0]);
       }
       if ( fit.Gamma[0]!=1 )   cout<<"Warning! Plotting with gamma factor !=1 not correctly implmeneted!"<<endl;
+      //f1->SetLineColor(kOrange+1);
+      //f1->SetLineWidth(3);
 
-      graph->GetFunction("pol1")->SetLineWidth(3);
+      // this is the linearized model, the result from the LTF
+      graph->GetFunction("pol1")->SetLineWidth(4);
+      graph->GetFunction("pol1")->SetLineColor(kOrange+1);
       
-      graph->Fit("pol2","QW");
-      graph->GetFunction("pol2")->SetLineWidth(83);
+      //graph->Fit("pol2","QW");
+      //graph->GetFunction("pol2")->SetLineWidth(83);
 
       graph->SetMarkerStyle(47);
       graph->SetMarkerColor(kRed+2);
       graph->SetLineColor(kRed+2);
+      graph->SetLineWidth(3);
       if ( fit.GetLogNormal() ) 
          graph->SetTitle((";"+referencename+";log("+yaxistitle+")").c_str()); // log(value/unit)
       else
@@ -360,15 +381,17 @@ void LTF_ROOTTools::plotLiTeFit(const LTF::LiTeFit& fit, const vector<double>& b
       graph->SetMaximum( max(gdata->GetY()[0],max(graph->GetY()[0],graph->GetY()[graph->GetN()-1]))*1.2);
 
       graph->Draw("ap");
+      fit_err_68->Draw("L3 same");
+      graph->Draw("P same");
       if ( fit.GetLogNormal() )
          f1log->Draw("Lsame");
       else
          pol1w->Draw("Lsame");
       //graph->GetFunction("pol1")->Draw("Lsame");
-    if ( reference_values.size()+1<= 6 ) 
-      graph->GetHistogram()->GetXaxis()->SetNdivisions(graph->GetN()+1);
-    else
-       graph->GetHistogram()->GetXaxis()->SetNdivisions(int(graph->GetN()/2)+1+200);
+      if ( reference_values.size()+1<= 6 ) 
+        graph->GetHistogram()->GetXaxis()->SetNdivisions(graph->GetN()+1);
+      else
+        graph->GetHistogram()->GetXaxis()->SetNdivisions(int(graph->GetN()/2)+1+200);
       //f2->Draw("same");
 
       gdata->Draw("P");
@@ -379,8 +402,8 @@ void LTF_ROOTTools::plotLiTeFit(const LTF::LiTeFit& fit, const vector<double>& b
          //legend.SetNColumns(3);
          legend.SetFillStyle(0);
          legend.SetBorderSize(0);
-         legend.SetTextSize(0.05);
-         legend.AddEntry(data,"Data","E0P");
+         legend.SetTextSize(0.04);
+         legend.AddEntry(gdata,"Data","E0P");
          legend.AddEntry(graph,"Templates","PE0");
          if ( fit.GetLogNormal() ) {
             legend.AddEntry(graph->GetFunction("pol1"),"Linear log(model)","L");
@@ -410,7 +433,7 @@ void LTF_ROOTTools::plotLiTeFit(const LTF::LiTeFit& fit, const vector<double>& b
       infotext.Prepend(Form("%3.0f", bins[ibin]));
       infotext.Append(Form("%3.0f", bins[ibin+1]));
       infotext.Append("_{}");
-      text.DrawLatex(0.20,0.93, infotext);
+      text.DrawLatex(0.24,0.93, infotext);
 
 /*
       cout<<input_table["ylow"][ibin]<<"\t"
@@ -434,19 +457,23 @@ void LTF_ROOTTools::plotLiTeFit(const LTF::LiTeFit& fit, const vector<double>& b
     TGraph* gChi2 = new TGraph();
     int ndf = (fit.Dt.rows()-(fit.M.cols()-1));
     for ( int itmpl = 0 ; itmpl<fit.chisq_y.size() ; itmpl++ )  {
-       gChi2->SetPoint(itmpl, reference_values[itmpl], fit.chisq_y(itmpl)/ndf);
+       //gChi2->SetPoint(itmpl, reference_values[itmpl], fit.chisq_y(itmpl)/ndf);
+      gChi2->SetPoint(itmpl, reference_values[itmpl], fit.chisq_y(itmpl));
     }
     gChi2->Fit("pol2","QW");
+    gChi2->GetFunction("pol2")->SetLineColor(kOrange+1);
     gChi2->SetMarkerStyle(20);
     
     TGraph* gChi2LTF = new TGraph();
-    gChi2LTF->SetPoint(0, fit.ahat(0), fit.chisq/ndf);
+    //gChi2LTF->SetPoint(0, fit.ahat(0), fit.chisq/ndf);
+    gChi2LTF->SetPoint(0, fit.ahat(0), fit.chisq);
     gChi2LTF->SetMarkerStyle(29);
     gChi2LTF->SetMarkerSize(3.1);
     gChi2LTF->SetMarkerColor(kViolet+2);
 
     TGraph* gChi2chk = new TGraph();
-    gChi2chk->SetPoint(0, fit.achk(0), fit.achk_chisq/ndf);
+    //gChi2chk->SetPoint(0, fit.achk(0), fit.achk_chisq/ndf);
+    gChi2chk->SetPoint(0, fit.achk(0), fit.achk_chisq);
     gChi2chk->SetMarkerSize(2.2);
     gChi2chk->SetMarkerStyle(24);
     gChi2chk->SetMarkerColor(kRed);
@@ -454,38 +481,40 @@ void LTF_ROOTTools::plotLiTeFit(const LTF::LiTeFit& fit, const vector<double>& b
     //gChi2LTF->Print("all");
     
     //gChi2->SetTitle(";#alpha_{0} [unit];#chi^{2}/ndf");
-    gChi2->SetTitle((";"+referencename+";#chi^{2}/ndf").c_str());
-    gChi2->SetMinimum(0.0);
-    gChi2->SetMaximum(2.5); 
-    gChi2->SetMinimum(0.75); // use for CMS jet fits
-    gChi2->SetMaximum(1.00); // use for CMS jet fits 
-
-    gChi2->Draw("ap");
+    TH1F* painter = gChi2->GetHistogram();
     if ( reference_values.size()+1<= 8 ) 
-       gChi2->GetHistogram()->SetNdivisions(reference_values.size()+1+300,"X");
+       painter->SetNdivisions(reference_values.size()+1+305,"X");
     else
-       gChi2->GetHistogram()->SetNdivisions(int(reference_values.size()/2)+1+200,"X");
+       painter->SetNdivisions(int(reference_values.size()/2)+1+200,"X");
+    painter->SetTitle((";"+referencename+";#chi^{2}").c_str());
+    painter->GetYaxis()->SetRangeUser(0, 25);
+    //painter->SetMaximum(15); 
+    //gChi2->SetMinimum(0.75); // use for CMS jet fits
+    //gChi2->SetMaximum(1.00); // use for CMS jet fits 
+    painter->Draw("");
+
+    gChi2->Draw("P same");
     
     TLine line;
     line.SetLineColor(920);
     line.SetLineStyle(3);
-    line.DrawLine( 
-       gChi2->GetHistogram()->GetXaxis()->GetXmin(),1.,
-       gChi2->GetHistogram()->GetXaxis()->GetXmax(), 1);
+    //line.DrawLine( 
+    //   gChi2->GetHistogram()->GetXaxis()->GetXmin(),1.,
+    //   gChi2->GetHistogram()->GetXaxis()->GetXmax(), 1);
 
-    line.DrawLine( 
-       fit.achk_chisq/ndf+1,1.,
-       fit.achk_chisq/ndf+1,1.);
+    //line.DrawLine( 
+    //   fit.achk_chisq/ndf+1,1.,
+    //   fit.achk_chisq/ndf+1,1.);
 
     gChi2chk->Draw("Psame");
     gChi2LTF->Draw("Psame");
 
     {
-       TLegend legend(0.18,0.70,0.66,0.97,"","NDC");
+       TLegend legend(0.35,0.70,0.66,0.97,"","NDC");
        //legend.SetNColumns(3);
        legend.SetFillStyle(0);
        legend.SetBorderSize(0);
-       legend.SetTextSize(0.045);
+       legend.SetTextSize(0.04);
        legend.AddEntry(gChi2LTF,"#hat#chi^{2} of the Linear Template Fit","P");
        legend.AddEntry(gChi2,   "#chi^{2}_{#font[12]{j}} of the individual templates","P");
        legend.AddEntry(gChi2->GetFunction("pol2"),"Parabola","L");
@@ -1063,4 +1092,4 @@ void LTF_ROOTTools::plotLiTeFitPol2Test(const LTF::LiTeFit& fit, const vector<do
    
 }
 
-
+ 

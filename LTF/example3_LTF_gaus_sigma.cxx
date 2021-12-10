@@ -29,6 +29,8 @@
 #include "LTF/LTF_ROOTTools.h"
 #include <TH1D.h>
 #include <string>
+#include <TStyle.h>
+#include <TSystem.h>
 
 using namespace std;
 

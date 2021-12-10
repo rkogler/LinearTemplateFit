@@ -30,6 +30,9 @@
 #include <TH1D.h>
 #include <string>
 
+#include <TStyle.h>
+#include <TSystem.h>
+
 using namespace std;
 
 

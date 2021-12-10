@@ -12,7 +12,7 @@ ROOTINCLUDES=
 ifdef WITH_ROOT
 WITH_ROOT=-D__WITH_ROOT__
 ROOTLIBS=$(shell root-config --libs)
-ROOTINCLUDES=-I$(shell root-config --incdir)
+ROOTINCLUDES=-I$(shell root-config --incdir) -D__WITH_ROOT__
 endif
 
 # take eigen from local copy in 'Eigen_copy' or from

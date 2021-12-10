@@ -29,6 +29,9 @@
 #include "LTF/LTF.h"
 #include "LTF/LTF_ROOTTools.h"
 
+#include <TStyle.h>
+#include <TSystem.h>
+
 void PrintAsciiTable(const map<double,TH1D*>&, TH1D* data);
 
 // __________________________________________________________________________________ //
